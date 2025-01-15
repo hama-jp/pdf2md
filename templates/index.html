@@ -8,6 +8,19 @@
                 <label for="pdf_file">PDFファイルを選択してください：</label>
                 <input type="file" id="pdf_file" name="pdf_file" accept=".pdf" required>
             </div>
+            <div class="form-group conversion-options">
+                <label class="option-label">変換方法：</label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="conversion_type" value="mupdf" checked>
+                        PyMuPDF（フォーマット保持）
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="conversion_type" value="pdfium">
+                        PDFium（レイアウト重視）
+                    </label>
+                </div>
+            </div>
             <div class="button-group">
                 <button type="submit" class="convert-button">Markdownに変換</button>
                 {% if markdown_content %}
