@@ -1,20 +1,20 @@
 # PDF to Markdown Converter
 
-PDFファイルをMarkdownテキストに変換するWebアプリケーションです。
+PDFファイルをMarkdown形式に変換するWebアプリケーションです。
 
 ## 機能
 
 - PDFファイルのアップロード
-- PDF内のテキストをMarkdown形式に変換
+- PDFからテキストを抽出してMarkdown形式に変換
 - 変換結果のプレビュー表示
 - Markdownファイルのダウンロード
 
-## 必要要件
+## 必要条件
 
 - Python 3.8以上
-- 必要なパッケージは`requirements.txt`に記載
+- 依存パッケージ（requirements.txtに記載）
 
-## インストール方法
+## セットアップ
 
 1. リポジトリをクローン
 ```bash
@@ -22,36 +22,46 @@ git clone [repository-url]
 cd pdf2md
 ```
 
-2. 仮想環境を作成し、アクティベート
+2. 仮想環境を作成して有効化
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate  # Linux/macOS
+# または
+.venv\Scripts\activate     # Windows
 ```
 
-3. 依存パッケージをインストール
+3. 依存パッケージのインストール
 ```bash
 uv pip install -r requirements.txt
 ```
 
 ## 使用方法
 
-1. アプリケーションを起動
+1. アプリケーションの起動
 ```bash
 python app.py
 ```
 
 2. ブラウザで http://localhost:5000 にアクセス
 
-3. PDFファイルを選択してアップロード
+3. 「ファイルを選択」ボタンからPDFファイルを選択
 
-4. 変換結果を確認し、必要に応じてMarkdownファイルをダウンロード
+4. 「Markdownに変換」ボタンをクリック
+
+5. 変換結果を確認し、必要に応じてダウンロード
+
+## 使用技術
+
+- Flask: Webアプリケーションフレームワーク
+- PyMuPDF: PDFファイルの処理
+- HTML/CSS: フロントエンド
 
 ## 注意事項
 
-- PDFファイルのみ対応しています
-- テキスト抽出の精度はPDFファイルの品質に依存します
-- 大きなPDFファイルの場合、変換に時間がかかる可能性があります
+- 一度に処理できるファイルサイズには制限があります
+- 複雑なレイアウトのPDFファイルは正確に変換できない場合があります
+- アップロードされたファイルは一時ファイルとして保存され、処理後に自動的に削除されます
 
 ## ライセンス
 
-[MIT License](https://opensource.org/licenses/MIT)
+MITライセンス
