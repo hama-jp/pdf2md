@@ -2,3 +2,4 @@ flask
 pymupdf
 flake8
 black
+nougat-ocr

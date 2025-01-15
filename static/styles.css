@@ -49,6 +49,42 @@ label {
     font-weight: bold;
 }
 
+.conversion-options {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.option-label {
+    margin-bottom: 0.8rem;
+    color: #495057;
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    font-weight: normal;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.radio-label:hover {
+    background-color: #e9ecef;
+}
+
+.radio-label input[type="radio"] {
+    margin-right: 0.5rem;
+}
+
 input[type="file"] {
     width: 100%;
     padding: 0.5rem;
