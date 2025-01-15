@@ -50,6 +50,44 @@ label {
 }
 
 .conversion-options {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: normal;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.radio-label:hover {
+    background-color: #e9ecef;
+}
+
+input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.option-label {
+    margin-bottom: 1rem;
+    color: #495057;
+}
+
+.conversion-options {
     background-color: #f8f9fa;
     padding: 1rem;
     border-radius: 4px;
