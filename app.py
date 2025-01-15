@@ -8,6 +8,7 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 UPLOAD_FOLDER = Path(tempfile.gettempdir()) / "pdf2md"
 UPLOAD_FOLDER.mkdir(exist_ok=True)
+MARKDOWN_FILE = UPLOAD_FOLDER / "converted.md"
 
 def pdf_to_markdown(pdf_path):
     """PDFファイルをMarkdownに変換する"""
@@ -56,8 +57,8 @@ def upload_file():
         # Markdownに変換
         markdown_content = pdf_to_markdown(temp_pdf)
         
-        # セッションに保存
-        session['markdown_content'] = markdown_content
+        # 一時ファイルとしてMarkdownを保存
+        MARKDOWN_FILE.write_text(markdown_content, encoding='utf-8')
         
         # 結果を表示
         return render_template('index.html', markdown_content=markdown_content)
@@ -73,16 +74,12 @@ def upload_file():
 @app.route('/download')
 def download_markdown():
     """変換したMarkdownファイルをダウンロード"""
-    if 'markdown_content' not in session:
+    if not MARKDOWN_FILE.exists():
         return render_template('index.html', error='変換結果が見つかりません')
     
     try:
-        # 一時ファイルとしてMarkdownを保存
-        temp_md = UPLOAD_FOLDER / "converted.md"
-        temp_md.write_text(session['markdown_content'], encoding='utf-8')
-        
         return send_file(
-            temp_md,
+            MARKDOWN_FILE,
             as_attachment=True,
             download_name='converted.md',
             mimetype='text/markdown'
@@ -90,11 +87,6 @@ def download_markdown():
     
     except Exception as e:
         return render_template('index.html', error=f'ダウンロードエラー: {str(e)}')
-    
-    finally:
-        # 一時ファイルを削除
-        if temp_md.exists():
-            temp_md.unlink()
 
 if __name__ == '__main__':
     app.run(debug=True)
