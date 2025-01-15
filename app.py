@@ -52,11 +52,33 @@ def pdf_to_markdown_with_pdfium(pdf_path):
     
     return '\n'.join(markdown_content)
 
+import re
+
+def is_likely_math(text):
+    """テキストが数式である可能性を判定"""
+    math_indicators = [
+        r'\+', r'-', r'\*', r'/', r'=', r'\^',  # 基本的な演算子
+        r'\sum', r'\int', r'\frac', r'\sqrt',    # 一般的な数学記号
+        r'[a-z]\([x-z]\)',                       # 関数表記
+        r'[α-ωΑ-Ω]',                            # ギリシャ文字
+        r'\d+[²³]',                              # 上付き数字
+        r'[xy]\d+',                              # 変数と数字の組み合わせ
+    ]
+    # パターンを結合
+    pattern = '|'.join(math_indicators)
+    return (
+        bool(re.search(pattern, text)) or
+        (text.count('(') > 0 and text.count(')') > 0) or  # 括弧の存在
+        (len(text) < 30 and sum(c.isdigit() for c in text) > len(text) * 0.3)  # 短い文で数字が多い
+    )
+
 def pdf_to_markdown_with_mupdf(pdf_path):
-    """PyMuPDFを使用してPDFファイルをMarkdownに変換する"""
+    """PyMuPDFを使用してPDFファイルをMarkdownに変換する（数式対応）"""
     doc = fitz.open(pdf_path)
     markdown_content = []
     current_font_size = 0
+    in_math_block = False
+    math_content = []
     
     for page in doc:
         blocks = page.get_text("dict")["blocks"]
@@ -65,32 +87,68 @@ def pdf_to_markdown_with_mupdf(pdf_path):
                 continue
                 
             for line in block["lines"]:
+                line_text = ""
+                math_detected = False
+                
                 for span in line["spans"]:
                     text = span["text"].strip()
                     if not text:
                         continue
-                        
+                    
                     size = span["size"]
                     flags = span["flags"]
+                    font = span["font"].lower()
                     
-                    # ヘッダーの検出
+                    # 数式の検出
+                    if (is_likely_math(text) or 
+                        "math" in font or 
+                        "symbol" in font or 
+                        any(c in text for c in "∑∫∏√∆∇")):
+                        
+                        if not in_math_block:
+                            if line_text:
+                                markdown_content.append(line_text)
+                                line_text = ""
+                            markdown_content.append("\n$$")
+                            in_math_block = True
+                        math_content.append(text)
+                        math_detected = True
+                        continue
+                    
+                    if in_math_block and not math_detected:
+                        markdown_content.append(' '.join(math_content))
+                        markdown_content.append("$$\n")
+                        in_math_block = False
+                        math_content = []
+                    
+                    # 通常のテキスト処理
                     if size > current_font_size:
                         level = min(3, max(1, int(6 - (size / 4))))
-                        text = f"{'#' * level} {text}"
+                        if line_text:
+                            markdown_content.append(line_text)
+                            line_text = ""
+                        line_text = f"{'#' * level} {text}"
                         current_font_size = size
-                    
-                    # 太字の検出
-                    if flags & 2**4:  # bold text
-                        text = f"**{text}**"
-                    
-                    # イタリックの検出
-                    if flags & 2**1:  # italic text
-                        text = f"*{text}*"
-                    
-                    markdown_content.append(text)
+                    else:
+                        if flags & 2**4:  # bold text
+                            text = f"**{text}**"
+                        if flags & 2**1:  # italic text
+                            text = f"*{text}*"
+                        line_text += " " + text if line_text else text
+                
+                if line_text:
+                    markdown_content.append(line_text)
             
             # ブロック間に空行を追加
-            markdown_content.append("")
+            if not in_math_block:
+                markdown_content.append("")
+        
+        # 数式ブロックを閉じる
+        if in_math_block:
+            markdown_content.append(' '.join(math_content))
+            markdown_content.append("$$\n")
+            in_math_block = False
+            math_content = []
         
         # ページ区切り
         markdown_content.extend(["---", ""])
