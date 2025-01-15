@@ -8,7 +8,12 @@
                 <label for="pdf_file">PDFファイルを選択してください：</label>
                 <input type="file" id="pdf_file" name="pdf_file" accept=".pdf" required>
             </div>
-            <button type="submit" class="convert-button">Markdownに変換</button>
+            <div class="button-group">
+                <button type="submit" class="convert-button">Markdownに変換</button>
+                {% if markdown_content %}
+                <a href="{{ url_for('download_markdown') }}" class="download-button">Markdownファイルをダウンロード</a>
+                {% endif %}
+            </div>
         </form>
     </div>
     {% if error %}
@@ -22,7 +27,6 @@
         <div class="markdown-preview">
             <pre>{{ markdown_content }}</pre>
         </div>
-        <a href="{{ url_for('download_markdown') }}" class="download-button">Markdownファイルをダウンロード</a>
     </div>
     {% endif %}
 </div>
