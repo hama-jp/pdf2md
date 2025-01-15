@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="upload-form">
+        <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="pdf_file">PDFファイルを選択してください：</label>
+                <input type="file" id="pdf_file" name="pdf_file" accept=".pdf" required>
+            </div>
+            <button type="submit" class="convert-button">Markdownに変換</button>
+        </form>
+    </div>
+    {% if error %}
+    <div class="error-message">
+        {{ error }}
+    </div>
+    {% endif %}
+    {% if markdown_content %}
+    <div class="result-container">
+        <h2>変換結果</h2>
+        <div class="markdown-preview">
+            <pre>{{ markdown_content }}</pre>
+        </div>
+        <a href="{{ url_for('download_markdown') }}" class="download-button">Markdownファイルをダウンロード</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
