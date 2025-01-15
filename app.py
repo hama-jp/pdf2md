@@ -1,10 +1,14 @@
 
 import os
+import asyncio
 from flask import Flask, render_template, request, send_file, session
 import fitz
-import pypdfium2 as pdfium
 import tempfile
 from pathlib import Path
+from nougat import NougatModel
+from nougat.utils.checkpoint import get_checkpoint
+from nougat.postprocessing import markdown_compatible
+import torch
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -12,45 +16,36 @@ UPLOAD_FOLDER = Path(tempfile.gettempdir()) / "pdf2md"
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 MARKDOWN_FILE = UPLOAD_FOLDER / "converted.md"
 
-def pdf_to_markdown_with_pdfium(pdf_path):
-    """pypdfium2を使用してPDFファイルをMarkdownに変換する"""
-    pdf = pdfium.PdfDocument(pdf_path)
-    markdown_content = []
+# Nougatモデルをグローバルに初期化
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+nougat_model = None
 
-    for page_number in range(len(pdf)):
-        page = pdf.get_page(page_number)
-        text_page = page.get_textpage()
-        text = text_page.get_text_range()
-        
-        # テキストを行に分割して処理
-        lines = text.split('\n')
-        formatted_lines = []
-        
-        # 前の行の文字サイズを記録
-        prev_size = None
-        
-        for line in lines:
-            if not line.strip():
-                continue
-            
-            # 行の文字サイズを取得（簡易的な実装）
-            if len(line) > 50:  # 長い行は本文として扱う
-                if prev_size and prev_size > 12:
-                    formatted_lines.append(f"## {line}")
-                else:
-                    formatted_lines.append(line)
-                prev_size = 10
-            else:
-                if prev_size and prev_size <= 12:
-                    formatted_lines.append(line)
-                else:
-                    formatted_lines.append(f"### {line}")
-                prev_size = 14
-        
-        markdown_content.extend(formatted_lines)
-        markdown_content.extend(["", "---", ""])  # ページ区切り
+def get_nougat_model():
+    """Nougatモデルを取得（初回呼び出し時に初期化）"""
+    global nougat_model
+    if nougat_model is None:
+        checkpoint = get_checkpoint()
+        nougat_model = NougatModel.from_pretrained(checkpoint).to(device)
+        nougat_model.eval()
+    return nougat_model
+
+async def pdf_to_markdown_with_nougat(pdf_path):
+    """Nougat-OCRを使用してPDFファイルを高品質にMarkdownに変換する"""
+    model = get_nougat_model()
+    predictions = []
     
-    return '\n'.join(markdown_content)
+    try:
+        predictions = await model.convert(pdf_path)
+        markdown = []
+        for page, pred in enumerate(predictions):
+            # マークダウン互換の後処理を適用
+            processed = markdown_compatible(pred)
+            markdown.append(processed)
+            markdown.append("\n---\n")  # ページ区切り
+        
+        return '\n'.join(markdown)
+    except Exception as e:
+        raise RuntimeError(f"Nougat変換エラー: {str(e)}")
 
 import re
 
@@ -64,7 +59,6 @@ def is_likely_math(text):
         r'\d+[²³]',                              # 上付き数字
         r'[xy]\d+',                              # 変数と数字の組み合わせ
     ]
-    # パターンを結合
     pattern = '|'.join(math_indicators)
     return (
         bool(re.search(pattern, text)) or
@@ -183,11 +177,16 @@ def upload_file():
         file.save(temp_pdf)
         
         # 変換方法の選択
-        use_pdfium = request.form.get('conversion_type', 'mupdf') == 'pdfium'
+        use_nougat = request.form.get('conversion_type', 'nougat') == 'nougat'
         
         # Markdownに変換
-        if use_pdfium:
-            markdown_content = pdf_to_markdown_with_pdfium(temp_pdf)
+        if use_nougat:
+            try:
+                # 非同期関数を同期的に実行
+                markdown_content = asyncio.run(pdf_to_markdown_with_nougat(temp_pdf))
+            except Exception as e:
+                # Nougatが失敗した場合、PyMuPDFにフォールバック
+                markdown_content = pdf_to_markdown_with_mupdf(temp_pdf)
         else:
             markdown_content = pdf_to_markdown_with_mupdf(temp_pdf)
         
