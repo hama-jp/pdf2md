@@ -1,4 +1,5 @@
 flask
+flask-socketio
 pymupdf
 flake8
 black

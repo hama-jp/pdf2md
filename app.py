@@ -1,7 +1,8 @@
 
 import os
 import asyncio
-from flask import Flask, render_template, request, send_file, session
+from flask import Flask, render_template, request, send_file, session, jsonify
+from flask_socketio import SocketIO, emit
 import fitz
 import tempfile
 from pathlib import Path
@@ -12,6 +13,7 @@ import torch
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+socketio = SocketIO(app)
 UPLOAD_FOLDER = Path(tempfile.gettempdir()) / "pdf2md"
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 MARKDOWN_FILE = UPLOAD_FOLDER / "converted.md"
@@ -29,13 +31,30 @@ def get_nougat_model():
         nougat_model.eval()
     return nougat_model
 
-async def pdf_to_markdown_with_nougat(pdf_path):
+async def pdf_to_markdown_with_nougat(pdf_path, sid=None):
     """Nougat-OCRを使用してPDFファイルを高品質にMarkdownに変換する"""
     model = get_nougat_model()
     predictions = []
     
     try:
-        predictions = await model.convert(pdf_path)
+        # PDFページ数を取得
+        doc = fitz.open(pdf_path)
+        total_pages = doc.page_count
+        doc.close()
+
+        # 進捗状況の初期化
+        if sid:
+            socketio.emit('progress', {'progress': 0, 'status': '変換を開始しています...'}, room=sid)
+
+        predictions = []
+        async for page_idx, prediction in aenumerate(model.convert(pdf_path)):
+            predictions.append(prediction)
+            if sid:
+                progress = int((page_idx + 1) / total_pages * 100)
+                socketio.emit('progress', {
+                    'progress': progress,
+                    'status': f'ページを処理中... ({page_idx + 1}/{total_pages})'
+                }, room=sid)
         markdown = []
         for page, pred in enumerate(predictions):
             # マークダウン互換の後処理を適用
@@ -53,29 +72,39 @@ def is_likely_math(text):
     """テキストが数式である可能性を判定"""
     math_indicators = [
         r'\+', r'-', r'\*', r'/', r'=', r'\^',  # 基本的な演算子
-        r'\sum', r'\int', r'\frac', r'\sqrt',    # 一般的な数学記号
+        r'\\sum', r'\\int', r'\\frac', r'\\sqrt',    # 一般的な数学記号
         r'[a-z]\([x-z]\)',                       # 関数表記
         r'[α-ωΑ-Ω]',                            # ギリシャ文字
         r'\d+[²³]',                              # 上付き数字
         r'[xy]\d+',                              # 変数と数字の組み合わせ
     ]
-    pattern = '|'.join(math_indicators)
+    pattern = '|'.join([re.escape(p) if '\\' in p else p for p in math_indicators])
     return (
         bool(re.search(pattern, text)) or
         (text.count('(') > 0 and text.count(')') > 0) or  # 括弧の存在
         (len(text) < 30 and sum(c.isdigit() for c in text) > len(text) * 0.3)  # 短い文で数字が多い
     )
 
-def pdf_to_markdown_with_mupdf(pdf_path):
+def pdf_to_markdown_with_mupdf(pdf_path, sid=None):
     """PyMuPDFを使用してPDFファイルをMarkdownに変換する（数式対応）"""
     doc = fitz.open(pdf_path)
+    total_pages = doc.page_count
     markdown_content = []
     current_font_size = 0
     in_math_block = False
     math_content = []
     
-    for page in doc:
+    if sid:
+        socketio.emit('progress', {'progress': 0, 'status': '変換を開始しています...'}, room=sid)
+
+    for page_idx, page in enumerate(doc):
         blocks = page.get_text("dict")["blocks"]
+        if sid:
+            progress = int((page_idx + 1) / total_pages * 100)
+            socketio.emit('progress', {
+                'progress': progress,
+                'status': f'ページを処理中... ({page_idx + 1}/{total_pages})'
+            }, room=sid)
         for block in blocks:
             if "lines" not in block:
                 continue
@@ -158,9 +187,15 @@ def index():
         MARKDOWN_FILE.unlink()
     return render_template('index.html', error=None, markdown_content=None)
 
+@socketio.on('connect')
+def handle_connect():
+    """WebSocket接続時のハンドラ"""
+    pass
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """PDFファイルをアップロードして変換"""
+    sid = request.cookies.get('socketio_sid')
     if 'pdf_file' not in request.files:
         return render_template('index.html', error='ファイルが選択されていません')
     
@@ -183,12 +218,23 @@ def upload_file():
         if use_nougat:
             try:
                 # 非同期関数を同期的に実行
-                markdown_content = asyncio.run(pdf_to_markdown_with_nougat(temp_pdf))
+                markdown_content = asyncio.run(pdf_to_markdown_with_nougat(temp_pdf, sid))
             except Exception as e:
+                if sid:
+                    socketio.emit('progress', {
+                        'progress': 0,
+                        'status': 'Nougatでの変換に失敗しました。PyMuPDFで再試行中...'
+                    }, room=sid)
                 # Nougatが失敗した場合、PyMuPDFにフォールバック
-                markdown_content = pdf_to_markdown_with_mupdf(temp_pdf)
+                markdown_content = pdf_to_markdown_with_mupdf(temp_pdf, sid)
         else:
-            markdown_content = pdf_to_markdown_with_mupdf(temp_pdf)
+            markdown_content = pdf_to_markdown_with_mupdf(temp_pdf, sid)
+
+        if sid:
+            socketio.emit('progress', {
+                'progress': 100,
+                'status': '変換が完了しました'
+            }, room=sid)
         
         # 一時ファイルとしてMarkdownを保存
         MARKDOWN_FILE.write_text(markdown_content, encoding='utf-8')
@@ -221,5 +267,12 @@ def download_markdown():
     except Exception as e:
         return render_template('index.html', error=f'ダウンロードエラー: {str(e)}')
 
+async def aenumerate(ait):
+    """非同期イテレータにenumerateを適用するヘルパー関数"""
+    i = 0
+    async for x in ait:
+        yield i, x
+        i += 1
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    socketio.run(app, debug=True, port=5002)

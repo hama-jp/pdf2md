@@ -3,6 +3,22 @@
     --error-color: #e74c3c;
     --success-color: #2ecc71;
     --background-color: #f5f6fa;
+    --text-color: #333;
+    --border-color: #dee2e6;
+    --card-background: #fff;
+    --hover-background: #e9ecef;
+}
+
+/* ダークモードのカラー設定 */
+.dark-mode {
+    --primary-color: #5c9ce6;
+    --error-color: #e74c3c;
+    --success-color: #2ecc71;
+    --background-color: #1a1a1a;
+    --text-color: #f5f6fa;
+    --border-color: #2d3436;
+    --card-background: #2d3436;
+    --hover-background: #3d4446;
 }
 
 body {
@@ -11,6 +27,8 @@ body {
     padding: 0;
     background-color: var(--background-color);
     line-height: 1.6;
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
 }
 
 header {
@@ -33,10 +51,61 @@ h1 {
 }
 
 .upload-form {
-    background: white;
+    background: var(--card-background);
     padding: 2rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.upload-form.drag-over {
+    border-color: var(--primary-color);
+    transform: scale(1.01);
+}
+
+.dark-mode-toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.dark-mode-toggle:hover {
+    background-color: var(--hover-background);
+}
+
+.progress-container {
+    margin-top: 1rem;
+    background: var(--hover-background);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 4px;
+    background-color: var(--primary-color);
+    width: 0;
+    transition: width 0.3s ease;
+}
+
+.status-text {
+    text-align: center;
+    margin-top: 0.5rem;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.file-name {
+    margin-top: 0.5rem;
+    color: var(--text-color);
+    font-size: 0.9rem;
 }
 
 .form-group {
@@ -161,10 +230,11 @@ input[type="file"] {
 
 .result-container {
     margin-top: 2rem;
-    background: white;
+    background: var(--card-background);
     padding: 2rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
 }
 
 .markdown-preview {
