@@ -1,67 +1,61 @@
 # PDF to Markdown Converter
 
-PDFファイルをMarkdown形式に変換するWebアプリケーションです。
+PDF文書をMarkdownに変換するWebアプリケーションです。数式や表、画像を含むPDFファイルにも対応しています。
 
-## 機能
+## 特徴
 
-- PDFファイルのアップロード
-- PDFからテキストを抽出してMarkdown形式に変換
-- 変換結果のプレビュー表示
-- Markdownファイルのダウンロード
+- OCRを使用した高品質な変換（Nougat）
+- 軽量で高速な変換オプション（PyMuPDF）
+- ドラッグ＆ドロップでのファイルアップロード
+- リアルタイムの変換進捗表示
+- ダークモード対応
+- 数式の自動検出とTeX形式での出力
 
-## 必要条件
+## インストール
 
-- Python 3.8以上
-- 依存パッケージ（requirements.txtに記載）
-
-## セットアップ
-
-1. リポジトリをクローン
 ```bash
-git clone [repository-url]
+# リポジトリをクローン
+git clone https://github.com/yourusername/pdf2md.git
 cd pdf2md
-```
 
-2. 仮想環境を作成して有効化
-```bash
-python3 -m venv .venv
+# 仮想環境を作成して有効化
+python -m venv .venv
 source .venv/bin/activate  # Linux/macOS
 # または
-.venv\Scripts\activate     # Windows
-```
+.venv\Scripts\activate  # Windows
 
-3. 依存パッケージのインストール
-```bash
-uv pip install -r requirements.txt
+# 依存パッケージをインストール
+pip install -r requirements.txt
 ```
 
 ## 使用方法
 
-1. アプリケーションの起動
+1. サーバーを起動
 ```bash
 python app.py
 ```
 
-2. ブラウザで http://localhost:5000 にアクセス
+2. ブラウザで http://localhost:5002 にアクセス
 
-3. 「ファイルを選択」ボタンからPDFファイルを選択
+3. 以下のいずれかの方法でPDFファイルを選択
+   - 「ファイルを選択」ボタンをクリック
+   - PDFファイルをドラッグ＆ドロップ
 
-4. 「Markdownに変換」ボタンをクリック
+4. 変換方法を選択
+   - Nougat OCR: 高品質な変換（数式対応）
+   - PyMuPDF: 軽量・高速な変換
 
-5. 変換結果を確認し、必要に応じてダウンロード
+5. 「Markdownに変換」ボタンをクリック
 
-## 使用技術
+6. 変換完了後、プレビューを確認してダウンロード
 
-- Flask: Webアプリケーションフレームワーク
-- PyMuPDF: PDFファイルの処理
-- HTML/CSS: フロントエンド
+## 依存パッケージ
 
-## 注意事項
-
-- 一度に処理できるファイルサイズには制限があります
-- 複雑なレイアウトのPDFファイルは正確に変換できない場合があります
-- アップロードされたファイルは一時ファイルとして保存され、処理後に自動的に削除されます
+- Flask: Webフレームワーク
+- Nougat OCR: 高品質PDF変換
+- PyMuPDF: PDF解析とテキスト抽出
+- Flask-SocketIO: リアルタイム進捗表示
 
 ## ライセンス
 
-MITライセンス
+MIT License
